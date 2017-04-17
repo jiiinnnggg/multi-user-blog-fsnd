@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">        	
+        <link href="https://fonts.googleapis.com/css?family=Raleway:400,600" rel="stylesheet">	  		
+	  	<link rel="stylesheet" type="text/css" href="/static/css/bootstrap/bootstrap.css" />
+	  	<link rel="stylesheet" type="text/css" href="/static/css/styles.css">	
+	  	<title>Udacity FSND Project: Multi-User Blog (Jing Sun)</title>
+	</head>
+
+	<body class="main_page">
+		<div class="header container">
+			<div class="header-inner">
+				<div class="header_upper row">
+					<div class="col-md-9 offset-md-2">
+						<a href="https://www.udacity.com/" target="_blank">
+	                    	<img class="header_logo" src="/static/img/udacity.svg" alt="udacity-logo"></a>
+						<a href="/" class="main-title">Project: Multi-User Blog</a>
+					</div>
+				</div>
+									
+				<div class="header_lower row">					
+					<div class="nav_area col-sm-10 col-md-7 offset-md-1 col-lg-6 offset-lg-2">
+						<ul>
+					  		<li><a href="/blog">Blog</a></li>
+					  		<li><a href="/newpost">New Post</a></li>
+					  		{% if username %}
+					  			<li><a href="/logout">Logout</a>
+					  		{% else %}
+					  			<li><a href="/login">Login</a>
+					  			<li><a href="/signup">Sign Up</a>
+					  		{% endif %}					  		
+					  	</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+			
+		<br>
+						
+		<div class="content-area" id="content-area">
+			{% if username %} 
+				<h5>Hello, {{username}}</h5>	    
+			{% endif %}
+			<hr>					    
+			{% block content %}
+			{% endblock %}
+			  	
+			{% block comments %}
+			{% endblock %}			  				  				  	
+		</div>
+	</body>
+</html>

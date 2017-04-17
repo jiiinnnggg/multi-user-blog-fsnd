@@ -1,0 +1,45 @@
+<div class="single_post">
+ 
+	<h5 class="post-title">
+		<a href="/{{p.key.id()}}">
+			{{p.subject}}
+		</a>
+	</h5>
+	
+	<div>by <span class="post-author">{{p.author}}</span></div>
+	<div class="post-date">
+		<p>{{p.created.strftime("%A - %B %d, %Y")}}</p>
+	</div>
+
+	<div class="post-content">
+		{{p._render_text | safe}}
+	</div>
+	  
+	<hr>
+	  
+	{% if username %}
+		{% if username == p.author %}
+		<p><em><small>You may not like your own post.</small></em></p>
+		{% else %}
+			<p><strong>
+			{% if username in p.likers %}
+				<form action="/{{p.key.id()}}/unlike" method="post">
+			        <input type="submit" class="like-button" value="Unlike">
+      			</form>
+			{% else %}
+				<form action="/{{p.key.id()}}/like" method="post">
+			        <input type="submit" class="like-button" value="Like">
+      			</form>
+			{% endif %}
+			</strong><span class="post-likes"> - {{p.likes}} like(s)</span></p>
+		{% endif %}
+	{% else %}
+		<p><em><small>To like or comment on this post, please log in.</small></em></p>
+	{% endif %} 
+	
+	<p><strong><a href="/{{p.key.id()}}#comments">View Comments</a></strong></p>
+	
+	<p><em>last modified on {{p.last_modified.strftime("%B %d, %Y")}}</em></p>
+	<br>
+
+</div>

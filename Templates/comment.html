@@ -1,0 +1,29 @@
+<div class="single_comment">
+	<div class="comment-header"> 
+		<p><span class="c-author"><strong>{{c.author}}</strong></span> wrote on {{c.last_modified.strftime("%B %d, %Y")}}
+		(ID: <a href="/{{c.post_parent_id}}/comment/{{c.key.id()}}">{{c.key.id()}}</a>):
+		</p>
+	</div>
+
+	<div class="comment-inner">
+		<div class="c-content col-md-8 offset-md-1"><em>
+			{{c._render_text | safe}}</em>
+		</div>	
+		<br>
+	</div>
+	
+	{% if username == c.author %}
+		<div class="edit_or_delete row">
+			<div class="col-md-12">
+   				<a href="/{{c.post_parent_id}}/comment/{{c.key.id()}}/editcomment">Edit Comment</a>
+   				|			
+	  			<a href="/{{c.post_parent_id}}/comment/{{c.key.id()}}/deletecomment">Delete Comment</a>
+	      	</div>     		
+  		</div>
+	{% else %}
+		<small><em>This comment can only be modified by its author. Please log in to edit or delete this comment.</em></small>
+	{% endif %}
+	  
+	<hr>
+	  
+</div>

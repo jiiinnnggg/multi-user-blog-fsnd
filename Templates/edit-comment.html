@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  	<h4><strong>Edit Comment</strong></h4>
+    
+    <br>
+
+    <form id="editcomment_page" method="post">
+    	  <h6><strong>Post:</strong></h6>
+    	  {{p._render(username) | safe}}
+
+	      <br>	      
+	      <p><em>Comment ID #: {{c.key.id()}}</em></p>
+	      
+	      <div>
+	        <h6><strong>Edit Comment:</strong></h6>
+	        <textarea class="form-control" name="content" value="{{c.subject}}">{{c.content}}</textarea>
+	      </div>
+	      	
+	      <input type="Submit" class="button">
+	      <input type="button" class="button" value="Back" onClick="history.go(-1);return true;">
+    </form>
+    
+{% endblock %}

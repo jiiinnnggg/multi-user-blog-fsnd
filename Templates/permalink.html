@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+  	{{post._render(username) | safe}}
+
+  	{% if username == post.author %}
+  		<div>
+  			<p>You can <span><a href="/{{post.key.id()}}/editpost">edit this post. |</a></span>
+  			You can also <span><a href="/{{post.key.id()}}/deletepost">delete this post.</a></span>
+  		</div>
+  	{% else %}
+  		<em><small>This post can only be modified by its author. Please log in to edit or delete this post.</small></em>
+  	{% endif %}
+{% endblock %}
+
+{% block comments %}
+	<hr>  	
+  	<h5 id='comments'><a name='comments'><strong>
+  		Comment Section
+  		</strong></a></h5>
+  	<br>
+
+    <div class="container comment-section"> 
+      {% for c in comments %}
+      	{{c._render(username) | safe}}
+      {% endfor %}
+    </div>
+
+	{% if username %}
+    <div class="comment-form-box">
+      <form action="/{{post.key.id()}}/comment" method="post">
+        <div><textarea name="comment_content" class="form-control" placeholder="{{username}}, add your comments here..."></textarea></div>
+        <div><input type="submit" class="button" value="Post your comment"></div>
+      </form>
+      <hr>
+    </div>
+    {% else %}
+    <em><small>Please log in to your account in order to post a comment.</small></em>
+    {% endif %}
+    
+{% endblock %}

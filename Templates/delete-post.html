@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  	<h4>Delete Post</h4>
+    
+    <br>
+    
+    <form id="deletepost_page" method="post">
+	      <p><em>Post ID #: {{p.key.id()}}</em></p>
+	      
+	      <p>Subject: {{p.subject}}</p>
+
+	      <p>Content: {{p.content}}</p>
+	      	      
+	      <br>
+	      
+	      <p><strong>Are you sure you want to delete this post?</strong></p>
+	
+	      <input type="Submit" class="button" value="Delete">
+	      <input type="button" class="button" value="Back" onClick="history.go(-1);return true;">
+    </form>
+    
+{% endblock %}

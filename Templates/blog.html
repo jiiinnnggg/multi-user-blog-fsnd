@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+     	<link type="text/css" rel="stylesheet" href="/bootstrap/css/bootstrap.css">
+    	<link type="text/css" rel="stylesheet" href="/bootstrap/css/bootstrap-responsive.css">
+	</head>
+  
+  	<body>
+    	<div class="navbar navbar-inverse navbar-fixed-top">
+      		<div class="navbar-inner">
+        		<div class="container">
+          			<button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            			<span class="icon-bar"></span>
+            			<span class="icon-bar"></span>
+            			<span class="icon-bar"></span>
+          			</button>
+          			<a class="brand" href="#">App Engine Guestbook Suckas</a>
+          			<div class="nav-collapse collapse pull-right">
+            			<a href="{{ url|safe }}" class="btn">{{ url_linktext }}!</a>
+          			</div>
+        		</div>
+      		</div>
+    	</div>
+    	
+    	<div class="container">
+      		<!-- [START blog area] -->
+      			{% for blogpost in blogposts %}
+      				<div class="row">
+        				{% if blogpost.author %}
+          					<b>{{ blogpost.author.email }}
+            				{% if user and user.user_id() == blogpost.author.identity %}
+              				  (You muthafucka)
+            				{% endif %}
+          					</b> wrote:
+        					{% else %}
+          					  An anonymous person wrote:
+        					{% endif %}
+        					<blockquote>{{ blogpost.content }} from {{blogpost.date}} written by {{blogpost.author.email}}</blockquote>
+      				</div>
+      			{% endfor %}
+      		<!-- [END blog area] -->
+
+		      <form action="/sign?blog_name={{ blog_name }}" method="post">
+		        <div><textarea name="content" class="input-block-level" rows="4"></textarea></div>
+		        <div><input type="submit" class="btn btn-large btn-primary" value="Write something, or not."></div>
+		      </form>
+
+      		<hr>
+
+		      <form>Blog name:
+		        <input value="{{ blog_name }}" name="blog_name">
+		        <input type="submit" value="switch">
+		      </form>
+
+      			<a href="{{ url|safe }}">{{ url_linktext }}</a>
+    	</div>
+	</body>
+	
+</html>

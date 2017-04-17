@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+  	<h4>New Post</h4>
+    
+    <br>
+
+    <form id="newpost_page" method="post">
+	      <div>
+            <h5>Subject:</h5>
+            <input type="text" class="form-control" placeholder="Enter the subject here (required)" name="subject" value="{{subject}}">
+          </div>
+	      
+	      <br>
+	      
+	      <h5>Author: {{username}}</h5>
+	      
+	      <br>
+	
+	      <div>
+	        <h5>Content:</h5>
+	        <textarea class="form-control" placeholder="Provide the content here (required)" name="content">{{content}}</textarea>
+	      </div>
+	      
+	      <br>
+	
+	      <div class="error">{{error}}</div>
+	      
+	      <br>
+	
+	      <input type="Submit" class="button">
+	      <input type="button" class="button" value="Back" onClick="history.go(-1);return true;">
+    </form>
+    
+{% endblock %}
