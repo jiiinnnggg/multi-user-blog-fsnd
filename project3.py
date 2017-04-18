@@ -1,15 +1,11 @@
 # [START imports]
 import os
-
 import hmac
 import random
 from string import letters
 import hashlib
-
 import re
-
 from google.appengine.ext import ndb
-
 import jinja2
 import webapp2
 
@@ -34,7 +30,36 @@ class Utils:
         if secure_val == self.make_secure_val(val):
             return val
 
-"""Site Handler, webapp2"""
+    def make_salt(self, length = 6):
+        return ''.join(random.choice(letters) for x in xrange(length))
+        
+    def make_pw_hash(self, name, pw, salt=None):
+        if not salt:
+            salt = self.make_salt()
+        h = hashlib.sha256(name + pw + salt).hexdigest()
+        return '%s|%s' % (salt, h)
+    
+    def valid_pw(self, name, pw, h):
+        salt = h.split('|')[0]
+        return h == self.make_pw_hash(name, pw, salt)
+ 
+    def valid_username(self, username):
+        USER_RE = re.compile(r"^[a-zA-Z0-9_-]{4,20}$")
+        if username:
+            return USER_RE.match(username)
+
+    def valid_password(self, password):
+        PASS_RE = re.compile(r"^.{4,20}$")
+        if password:
+            return PASS_RE.match(password)
+    
+    def valid_email(self, email):
+        EMAIL_RE = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
+        if email:
+            return EMAIL_RE.match(email)
+
+
+"""RequestHandler functions"""
 class SiteHandler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -65,35 +90,12 @@ class SiteHandler(webapp2.RequestHandler):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         uid = self.read_secure_cookie('user_id')
         self.user = uid and User._by_id(int(uid))
+
   
 """[START USER SECTION, Class User is of type ndb.Model]"""
-
-def make_salt(length = 6):
-    return ''.join(random.choice(letters) for x in xrange(length))
-    
-# returns a string of format "salt|hash"
-def make_pw_hash(name, pw, salt=None):
-    if not salt:
-        salt = make_salt()
-    h = hashlib.sha256(name + pw + salt).hexdigest()
-    return '%s|%s' % (salt, h)
-
-# pass in a name, a password and a string of format "salt|hash"
-# if the string can be re-created with the make_pw_hash function, return True, else False
-def valid_pw(name, pw, h):
-    salt = h.split('|')[0]
-    return h == make_pw_hash(name, pw, salt)
-
-# [end, some functions to make a password hash]
-   
-
-#the key for the usergroup, allows for there to be multiple groups of Users
 DEFAULT_USERGROUP_NAME = 'default_usergroup'
 
 def usergroup_key(usergroup_name=DEFAULT_USERGROUP_NAME):
-    """Constructs a Datastore key for a User entity, ie. for multiple groups of Users.
-    We use usergroup_name as the key.
-    """
     return ndb.Key('UserGroup', usergroup_name)
 
 # [the User class]
@@ -102,36 +104,29 @@ class User(ndb.Model):
     pw_hash = ndb.StringProperty()
     email = ndb.StringProperty()
     
-    # [start User class methods]
-        
-    # returns the User entity by its uid and parent
     @classmethod
     def _by_id(cls, uid):
         #the variable 'uid' is related to the initialize method from SiteHandler
         u = cls.get_by_id(uid, parent=usergroup_key())
         return u
     
-    # returns the User entity by its name property
     @classmethod
     def _by_name(cls, name):
         u = cls.query(cls.name == name).get()
         return u
     
-    # create a new User entity by taking in name, pw and email
-    # the value stored in the pw_hash property uses the make_pw_hash function
     @classmethod
     def _register(cls, name, pw, email=None):
-        pw_hash = make_pw_hash(name, pw)
+        pw_hash = Utils().make_pw_hash(name, pw)
         return cls(parent=usergroup_key(),
                    name = name,
                    pw_hash = pw_hash,
                    email = email)
     
-    #returns the User entity if the User.name and User.pw_hash is valid
     @classmethod
     def _login(cls, name, pw):
         u = cls._by_name(name)
-        if u and valid_pw(name, pw, u.pw_hash):
+        if u and Utils().valid_pw(name, pw, u.pw_hash):
             return u
     
 """[END USER SECTION, Class User is of type ndb.Model]"""
@@ -140,24 +135,7 @@ class User(ndb.Model):
 
 # [START USER SIGNUP AND REGISTRATION SECTION]
 
-# pass in a username, then if it matches the USER_RE regex object, return True
-def valid_username(username):
-    USER_RE = re.compile(r"^[a-zA-Z0-9_-]{4,20}$")
-    if username:
-        return USER_RE.match(username)
 
-# likewise for the password
-def valid_password(password):
-    PASS_RE = re.compile(r"^.{4,20}$")
-    if password:
-        return PASS_RE.match(password)
-
-# likewise for the email
-def valid_email(email):
-    EMAIL_RE = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
-    if email:
-        return EMAIL_RE.match(email)
-    
 # class SignUp inherits from the SiteHandler class
 class SignUp(SiteHandler):
     # first, render the page
@@ -180,12 +158,12 @@ class SignUp(SiteHandler):
         # pass in the self.username from the get request, and if it doesn't match the regex,
         # assign the error msg to the 'error_username' in the params dictionary
         # and assign have_error to True
-        if not valid_username(self.username):
+        if not Utils().valid_username(self.username):
             params['error_username'] = "That's not a valid username."
             have_error = True
         
         # likewise for the password
-        if not valid_password(self.password):
+        if not Utils().valid_password(self.password):
             params['error_password'] = "That wasn't a valid password."
             have_error = True
         
@@ -196,7 +174,7 @@ class SignUp(SiteHandler):
             have_error = True
         
         # likewise for the email
-        if not valid_email(self.email):
+        if not Utils().valid_email(self.email):
             params['error_email'] = "That's not a valid email."
             have_error = True
 
