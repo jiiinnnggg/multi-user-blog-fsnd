@@ -18,74 +18,56 @@ template_dir = os.path.join(os.path.dirname(__file__), 'Templates')
 JINJA_ENV = jinja2.Environment(
     loader=jinja2.FileSystemLoader(template_dir),
     autoescape=True)
-# [END imports]
 
+"""Helper Functions"""
+class Utils:
+    def render_to_template(self, template, **params):
+        t = JINJA_ENV.get_template(template)
+        return t.render(params)
 
-def render_to_template(template, **params):
-    t = JINJA_ENV.get_template(template)
-    return t.render(params)
+    def make_secure_val(self, val):
+        secret = 'this_is_a_secret'
+        return '%s|%s' % (val, hmac.new(secret, val).hexdigest())
+    
+    def check_secure_val(self, secure_val):
+        val = secure_val.split("|")[0]
+        if secure_val == self.make_secure_val(val):
+            return val
 
-# [START create hash]
-secret = 'this_is_a_secret'
-
-def make_secure_val(val):
-    return '%s|%s' % (val, hmac.new(secret, val).hexdigest())
-
-def check_secure_val(secure_val):
-    val = secure_val.split("|")[0]
-    if secure_val == make_secure_val(val):
-        return val
-# [END create hash]
-
-
-# [START SiteHandler]
+"""Site Handler, webapp2"""
 class SiteHandler(webapp2.RequestHandler):
-    # [start page render methods]
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
 
     def render_to_template(self, template, **params):
-        return render_to_template(template, **params)
+        return Utils().render_to_template(template, **params)
 
     def render_page(self, template, **kw):
         self.write(self.render_to_template(template,**kw))
-    # [end page render methods]
-    
-    # [start cookie handling methods]
+
     def set_secure_cookie(self, name, val):
-        cookie_val = make_secure_val(val)
+        cookie_val = Utils().make_secure_val(val)
         self.response.headers.add_header(
             'Set-Cookie',
             '%s=%s; Path=/' % (name,cookie_val))
     
     def read_secure_cookie(self, name):
         cookie_val = self.request.cookies.get(name)
-        return cookie_val and check_secure_val(cookie_val)
+        return cookie_val and Utils().check_secure_val(cookie_val)
 
-    # sets the user_id cookie to a hashed version of the user's db id
     def login(self, user):
         self.set_secure_cookie('user_id', str(user.key.id()))
     
-    # sets the user_id to blank
     def logout(self):
         self.response.headers.add_header('Set-Cookie', 'user_id=; Path=/')
-
          
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
-        #if the user_id hash exists, set the part before the "|" it to a variable named 'uid'
         uid = self.read_secure_cookie('user_id')
-        #if uid is valid by using the User._by_id method, then set self.user to uid
         self.user = uid and User._by_id(int(uid))
-    # [end cookie handling methods]
-    
-# [END SiteHandler]
+  
+"""[START USER SECTION, Class User is of type ndb.Model]"""
 
-
-# [START USER SECTION, Class User is of type ndb.Model]
-
-# [some functions to make a password hash]
-# returns a random 6-letter long salt
 def make_salt(length = 6):
     return ''.join(random.choice(letters) for x in xrange(length))
     
@@ -152,29 +134,27 @@ class User(ndb.Model):
         if u and valid_pw(name, pw, u.pw_hash):
             return u
     
-# [END USER SECTION, Class User is of type ndb.Model]
+"""[END USER SECTION, Class User is of type ndb.Model]"""
         
 
 
 # [START USER SIGNUP AND REGISTRATION SECTION]
 
-# the user, passowrd and email are set as regex's
-USER_RE = re.compile(r"^[a-zA-Z0-9_-]{4,20}$")
-PASS_RE = re.compile(r"^.{4,20}$")
-EMAIL_RE = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
-
 # pass in a username, then if it matches the USER_RE regex object, return True
 def valid_username(username):
+    USER_RE = re.compile(r"^[a-zA-Z0-9_-]{4,20}$")
     if username:
         return USER_RE.match(username)
 
 # likewise for the password
 def valid_password(password):
+    PASS_RE = re.compile(r"^.{4,20}$")
     if password:
         return PASS_RE.match(password)
 
 # likewise for the email
 def valid_email(email):
+    EMAIL_RE = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
     if email:
         return EMAIL_RE.match(email)
     
@@ -333,7 +313,7 @@ class Post(ndb.Model):
     def _render(self, username):
         # insert a line break when rendering to page
         self._render_text = self.content.replace('\n', '<br>')
-        return render_to_template("post.html", p=self, username=username)
+        return Utils().render_to_template("post.html", p=self, username=username)
 
     @classmethod
     def _by_post_name(cls, name):
@@ -355,7 +335,7 @@ class Comment(ndb.Model):
     def _render(self, username):
         # insert a line break when rendering to page
         self._render_text = self.content.replace('\n', '<br>')
-        return render_to_template("comment.html", c=self, username=username)
+        return Utils().render_to_template("comment.html", c=self, username=username)
 
 
 class NewComment(SiteHandler):    
