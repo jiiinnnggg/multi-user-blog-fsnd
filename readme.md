@@ -10,6 +10,10 @@ To clone from Github:
 
 How to Run:
 
-- once downloaded into a local folder, the project can run with "dev_appserver.py ." 
-from the command prompt. then, from your browser, view the project at:
-- the project is also viewable at:
+- If you have not already, first install Python 2.7 and the Google App Engine Python SDK:
+https://cloud.google.com/appengine/docs/standard/python/download
+
+- From the directory where the project was cloned or saved, run: 'dev_appserver.py .'
+
+- View the project in your browser at:
+http://localhost:8080
