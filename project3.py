@@ -92,13 +92,12 @@ class SiteHandler(webapp2.RequestHandler):
         self.user = uid and User._by_id(int(uid))
 
   
-"""[START USER SECTION, Class User is of type ndb.Model]"""
+"""Datastore classes (User, Post, Comment)"""
 DEFAULT_USERGROUP_NAME = 'default_usergroup'
 
 def usergroup_key(usergroup_name=DEFAULT_USERGROUP_NAME):
     return ndb.Key('UserGroup', usergroup_name)
 
-# [the User class]
 class User(ndb.Model):
     name = ndb.StringProperty()
     pw_hash = ndb.StringProperty()
@@ -106,7 +105,6 @@ class User(ndb.Model):
     
     @classmethod
     def _by_id(cls, uid):
-        #the variable 'uid' is related to the initialize method from SiteHandler
         u = cls.get_by_id(uid, parent=usergroup_key())
         return u
     
@@ -129,153 +127,10 @@ class User(ndb.Model):
         if u and Utils().valid_pw(name, pw, u.pw_hash):
             return u
     
-"""[END USER SECTION, Class User is of type ndb.Model]"""
-        
-
-
-# [START USER SIGNUP AND REGISTRATION SECTION]
-
-
-# class SignUp inherits from the SiteHandler class
-class SignUp(SiteHandler):
-    # first, render the page
-    def get(self):
-        self.render_page("signup-form.html")
-     
-    # then, post
-    def post(self):
-        have_error = False
-        
-        # get these self properties from the form fields
-        self.username = self.request.get('username')
-        self.password = self.request.get('password')
-        self.verify = self.request.get('verify')
-        self.email = self.request.get('email')
-        
-        params = dict(username = self.username,
-                      email = self.email)
-        
-        # pass in the self.username from the get request, and if it doesn't match the regex,
-        # assign the error msg to the 'error_username' in the params dictionary
-        # and assign have_error to True
-        if not Utils().valid_username(self.username):
-            params['error_username'] = "That's not a valid username."
-            have_error = True
-        
-        # likewise for the password
-        if not Utils().valid_password(self.password):
-            params['error_password'] = "That wasn't a valid password."
-            have_error = True
-        
-        # if the password in the verify field doesn't match the password in the password field,
-        # return the error msg to 'error_verify'
-        elif self.password != self.verify:
-            params['error_verify'] = "Your passwords didn't match."
-            have_error = True
-        
-        # likewise for the email
-        if not Utils().valid_email(self.email):
-            params['error_email'] = "That's not a valid email."
-            have_error = True
-
-        # if the have_error is True, render the form again with the error msg(s) in the params
-        if have_error:
-            self.render_page("signup-form.html", **params)
-        else:
-            self.done()
-    
-    # this done function is used below in the Register(SignUp) class  
-    def done(self):
-        raise NotImplementedError
-
-# class Register inherits from SignUp
-class Register(SignUp):
-
-    # if done is not implemented, there is a NotImplementedError
-    def done(self):
-        
-        # using the self.username from the get request, 
-        # check if the name exists in the User ndb (by_name method)
-        # if the name exists, the entity is assigned to variable u,
-        # otherwise u is empty
-        u = User._by_name(self.username)
-        
-        if u:
-            msg = 'That user already exists.'
-            self.render_page('signup-form.html', error_username=msg)
-        else:
-            # creates a new User object,
-            # uses the register class method from User
-            u = User._register(self.username, self.password, self.email)
-            
-            # store u in DB
-            u.put()
-
-            # set the cookie - from class SiteHandler,
-            # then redirect to the blog page
-            self.login(u)
-            self.redirect('/')
-
-# [END USER SIGNUP AND REGISTRATION SECTION]      
-
-
-# [START LOGIN AND LOGOUT SECTION]
-
-class Login(SiteHandler):
-    
-    # render the login page
-    def get(self):
-        self.render_page('login-page.html')
-
-    # get the username and pw
-    def post(self):
-        username = self.request.get('username')
-        password = self.request.get('password')
-
-        # from User @classmethod login,
-        # returns the user entity if User.name and User.pw_hash are valid
-        u = User._login(username, password)
-        
-        if u:
-            # to clarify, self.login is from SiteHandler,
-            # same as in the Register class
-            self.login(u)
-            self.redirect('/welcome')
-        else:
-            msg = 'That login is invalid, please try again.'
-            self.render_page('login-page.html', error=msg)
-
-
-class Logout(SiteHandler):
-    def get(self):
-        # self.logout is from SiteHandler, set the cookie to empty
-        self.logout()
-        self.redirect('/')
-
-
-class Welcome(SiteHandler):
-    def get(self):
-        if self.user:
-            self.render_page('welcome.html', username = self.user.name)
-        else:
-            self.redirect('/login')
-
-# [END LOGIN AND LOGOUT SECTION]
-
-
-
-# [START BLOG SECTION]
-
 DEFAULT_BLOG_NAME = 'default_blog'
 
 def blog_key(blog_name=DEFAULT_BLOG_NAME):
-    """Constructs a Datastore key for a Post entity, ie. if there are multiple blogs.
-    We use blog_name as the key.
-    """
     return ndb.Key('Blog_name', blog_name)
-
-
-# [the Post class for blog entries]
  
 class Post(ndb.Model):
     subject = ndb.StringProperty(required=True)
@@ -299,9 +154,6 @@ class Post(ndb.Model):
         u = cls.query(cls.subject == name).get()
         return u
 
-
-# [Comment class for comments on Post entities]
-
 class Comment(ndb.Model):
     content = ndb.TextProperty(required=True)
     author = ndb.StringProperty()
@@ -316,20 +168,95 @@ class Comment(ndb.Model):
         return Utils().render_to_template("comment.html", c=self, username=username)
 
 
-class NewComment(SiteHandler):    
-    def post(self, post_id):
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
-        post = key.get()
-        
-        post_id_str = str(post.key.id())
-        
-        c = Comment(parent=post.key)
-        c.post_parent_id = post_id_str
-        c.author = User._by_name(self.user.name).name
-        c.content = self.request.get('comment_content')
-        c.put()
 
-        self.redirect('/' + post_id_str + '#comments')
+# class SignUp inherits from the SiteHandler class
+class SignUp(SiteHandler):
+    def get(self):
+        self.render_page("signup-form.html")
+     
+    def post(self):
+        have_error = False
+
+        self.username = self.request.get('username')
+        self.password = self.request.get('password')
+        self.verify = self.request.get('verify')
+        self.email = self.request.get('email')
+        
+        params = dict(username = self.username,
+                      email = self.email)
+
+        if not Utils().valid_username(self.username):
+            params['error_username'] = "That's not a valid username."
+            have_error = True
+        
+        if not Utils().valid_password(self.password):
+            params['error_password'] = "That wasn't a valid password."
+            have_error = True
+        
+        elif self.password != self.verify:
+            params['error_verify'] = "Your passwords didn't match."
+            have_error = True
+
+        if not Utils().valid_email(self.email):
+            params['error_email'] = "That's not a valid email."
+            have_error = True
+
+        if have_error:
+            self.render_page("signup-form.html", **params)
+        else:
+            self.done()
+    
+    def done(self):
+        raise NotImplementedError
+
+
+class Register(SignUp):
+    def done(self):
+        u = User._by_name(self.username)
+        
+        if u:
+            msg = 'That user already exists.'
+            self.render_page('signup-form.html', error_username=msg)
+        else:
+            u = User._register(self.username, self.password, self.email)
+            u.put()
+            self.login(u)
+            self.redirect('/')
+
+# [END USER SIGNUP AND REGISTRATION SECTION]      
+
+
+# [START LOGIN AND LOGOUT SECTION]
+
+class Login(SiteHandler):
+    def get(self):
+        self.render_page('login-page.html')
+
+    def post(self):
+        username = self.request.get('username')
+        password = self.request.get('password')
+
+        u = User._login(username, password)
+        
+        if u:
+            self.login(u)
+            self.redirect('/welcome')
+        else:
+            msg = 'That login is invalid, please try again.'
+            self.render_page('login-page.html', error=msg)
+
+
+class Logout(SiteHandler):
+    def get(self):
+        self.logout()
+        self.redirect('/')
+
+class Welcome(SiteHandler):
+    def get(self):
+        if self.user:
+            self.render_page('welcome.html', username = self.user.name)
+        else:
+            self.redirect('/login')
 
 
 class BlogFront(SiteHandler):
@@ -378,7 +305,21 @@ class CommentPage(SiteHandler):
         else:
             self.render_page("c_permalink.html", c=c)
             
+class NewComment(SiteHandler):    
+    def post(self, post_id):
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
+        
+        post_id_str = str(post.key.id())
+        
+        c = Comment(parent=post.key)
+        c.post_parent_id = post_id_str
+        c.author = User._by_name(self.user.name).name
+        c.content = self.request.get('comment_content')
+        c.put()
 
+        self.redirect('/' + post_id_str + '#comments')
+        
 class NewPost(SiteHandler):
     def get(self):
         if self.user:
