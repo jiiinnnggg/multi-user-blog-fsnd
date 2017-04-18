@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+	
+	<h4>How did you even get here?</h4>
+	
+	<h6>You can't like your own post and you can only like a post once. Don't like.</h6>
+	<br>
+	
+	<div class="dontlikevideo">
+		<iframe src="//www.youtube.com/embed/6g5ZF6DUrHI"
+		frameborder="0" allowfullscreen class="video"></iframe>
+	</div>
+	
+	<br>
+	<input type="button" class="button" value="Back" onClick="history.go(-1);return true;">
+	
+
+{% endblock %}

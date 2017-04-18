@@ -387,9 +387,7 @@ class DeletePost(SiteHandler):
 
         key = ndb.Key('Post', int(post_id), parent=blog_key())
         p = key.get()
-
         p.key.delete()
-
         self.redirect('/')
 
 # Like an existing post
@@ -403,14 +401,17 @@ class LikePost(SiteHandler):
             key = ndb.Key('Post', int(post_id), parent=blog_key())
             post = key.get()
 
-            # CAN'T LIKE YOUR OWN POST
-
+            # Can't like your own post
+            author = post.author
             liker = self.user.name
 
-            post.likes = post.likes + 1
-            post.likers.append(liker)
-            post.put()
-            self.redirect('/')
+            if (author == liker) or (liker in post.likers):
+                self.redirect('/nolike')
+            else:
+                post.likes = post.likes + 1
+                post.likers.append(liker)
+                post.put()
+                self.redirect('/')
 
 # Undo a 'Like'
 
@@ -430,6 +431,15 @@ class UnlikePost(SiteHandler):
                 post.likers.remove(liker)
                 post.put()
                 self.redirect('/')
+
+
+class NoLike(SiteHandler):
+    def get(self):
+        if self.user:
+            self.render_page("no-like.html",
+                             username=self.user.name)
+        else:
+            self.render_page("no-like.html")
 
 # Create new commment to a post
 
@@ -538,6 +548,7 @@ app = webapp2.WSGIApplication(
      ('/([0-9]+)/deletepost', DeletePost),
      ('/([0-9]+)/like', LikePost),
      ('/([0-9]+)/unlike', UnlikePost),
+     ('/nolike', NoLike),
      ('/([0-9]+)/comment', NewComment),
      ('/([0-9]+)/comment/([0-9]+)', CommentPage),
      ('/([0-9]+)/comment/([0-9]+)/editcomment', EditComment),
