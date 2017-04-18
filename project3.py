@@ -1,4 +1,3 @@
-# [START imports]
 import os
 import hmac
 import random
@@ -93,6 +92,7 @@ class SiteHandler(webapp2.RequestHandler):
 
   
 """Datastore classes (User, Post, Comment)"""
+# User class
 DEFAULT_USERGROUP_NAME = 'default_usergroup'
 
 def usergroup_key(usergroup_name=DEFAULT_USERGROUP_NAME):
@@ -126,7 +126,8 @@ class User(ndb.Model):
         u = cls._by_name(name)
         if u and Utils().valid_pw(name, pw, u.pw_hash):
             return u
-    
+
+# Post class    
 DEFAULT_BLOG_NAME = 'default_blog'
 
 def blog_key(blog_name=DEFAULT_BLOG_NAME):
@@ -154,6 +155,7 @@ class Post(ndb.Model):
         u = cls.query(cls.subject == name).get()
         return u
 
+# Comment class
 class Comment(ndb.Model):
     content = ndb.TextProperty(required=True)
     author = ndb.StringProperty()
@@ -168,8 +170,19 @@ class Comment(ndb.Model):
         return Utils().render_to_template("comment.html", c=self, username=username)
 
 
+"""SiteHandler sections"""
+# Front page
+class BlogFront(SiteHandler):
+    def get(self):
+        posts = Post.query()
+        posts = posts.order(-Post.created)
+        
+        if self.user:
+            self.render_page("blog-front.html", posts=posts, username = self.user.name)
+        else:
+            self.render_page("blog-front.html", posts=posts)
 
-# class SignUp inherits from the SiteHandler class
+# Sign up and register new users
 class SignUp(SiteHandler):
     def get(self):
         self.render_page("signup-form.html")
@@ -209,7 +222,6 @@ class SignUp(SiteHandler):
     def done(self):
         raise NotImplementedError
 
-
 class Register(SignUp):
     def done(self):
         u = User._by_name(self.username)
@@ -223,11 +235,7 @@ class Register(SignUp):
             self.login(u)
             self.redirect('/')
 
-# [END USER SIGNUP AND REGISTRATION SECTION]      
-
-
-# [START LOGIN AND LOGOUT SECTION]
-
+# User log in and log out
 class Login(SiteHandler):
     def get(self):
         self.render_page('login-page.html')
@@ -245,7 +253,6 @@ class Login(SiteHandler):
             msg = 'That login is invalid, please try again.'
             self.render_page('login-page.html', error=msg)
 
-
 class Logout(SiteHandler):
     def get(self):
         self.logout()
@@ -258,68 +265,7 @@ class Welcome(SiteHandler):
         else:
             self.redirect('/login')
 
-
-class BlogFront(SiteHandler):
-    def get(self):
-        # for now, let's just show all the posts
-        posts = Post.query()
-        posts = posts.order(-Post.created)
-        
-        if self.user:
-            self.render_page("blog-front.html", posts=posts, username = self.user.name)
-        else:
-            self.render_page("blog-front.html", posts=posts)
-
-
-class PostPage(SiteHandler):
-    def get(self, post_id):
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
-        post = key.get()
-        
-        comments_query = Comment.query(
-            ancestor=post.key).order(Comment.created)
-        comments_for_post = comments_query.fetch()     
-
-        if not post:
-            self.error(404)
-            return
-        
-        if self.user:
-            self.render_page("permalink.html", post=post, comments=comments_for_post, username = self.user.name)
-        else:
-            self.render_page("permalink.html", post=post, comments=comments_for_post)
-
-
-class CommentPage(SiteHandler):
-    def get(self, post_id, comment_id):
-        p_key = ndb.Key('Post', int(post_id), parent=blog_key())
-                
-        c_key = ndb.Key(Comment, int(comment_id), parent=p_key)
-        c = c_key.get()
-        
-        if not c:
-            self.redirect('/')
-        
-        if self.user:
-            self.render_page("c_permalink.html", c=c, username=self.user.name)
-        else:
-            self.render_page("c_permalink.html", c=c)
-            
-class NewComment(SiteHandler):    
-    def post(self, post_id):
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
-        post = key.get()
-        
-        post_id_str = str(post.key.id())
-        
-        c = Comment(parent=post.key)
-        c.post_parent_id = post_id_str
-        c.author = User._by_name(self.user.name).name
-        c.content = self.request.get('comment_content')
-        c.put()
-
-        self.redirect('/' + post_id_str + '#comments')
-        
+# Create new post
 class NewPost(SiteHandler):
     def get(self):
         if self.user:
@@ -344,9 +290,7 @@ class NewPost(SiteHandler):
                      likes=0,
                      likers=[]
                      )
-
-            new_post.put()
-            
+            new_post.put()            
             self.redirect('/%s' % str(new_post.key.id()))
                       
         else:
@@ -354,7 +298,26 @@ class NewPost(SiteHandler):
             self.render_page("new-post.html", subject=subject, content=content,
                         error=error)
 
+# Display single post
+class PostPage(SiteHandler):
+    def get(self, post_id):
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
+        
+        comments_query = Comment.query(
+            ancestor=post.key).order(Comment.created)
+        comments_for_post = comments_query.fetch()     
 
+        if not post:
+            self.error(404)
+            return
+        
+        if self.user:
+            self.render_page("permalink.html", post=post, comments=comments_for_post, username = self.user.name)
+        else:
+            self.render_page("permalink.html", post=post, comments=comments_for_post)
+
+# Edit existing post
 class EditPost(SiteHandler):
     def get(self, post_id):
         key = ndb.Key('Post', int(post_id), parent=blog_key())
@@ -376,7 +339,7 @@ class EditPost(SiteHandler):
         
         self.redirect('/%s' % str(p.key.id()))
 
-       
+# Delete existing post      
 class DeletePost(SiteHandler):
     def get(self, post_id):
         key = ndb.Key('Post', int(post_id), parent=blog_key())
@@ -395,6 +358,74 @@ class DeletePost(SiteHandler):
         
         self.redirect('/')
 
+# Like an existing post
+class LikePost(SiteHandler):
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            
+        else:
+            key = ndb.Key('Post', int(post_id), parent=blog_key())
+            post = key.get()
+            
+            liker = self.user.name
+
+            post.likes = post.likes + 1
+            post.likers.append(liker)
+            post.put()
+            self.redirect('/')
+
+# Undo a 'Like'
+class UnlikePost(SiteHandler):
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            
+        else:
+            key = ndb.Key('Post', int(post_id), parent=blog_key())
+            post = key.get()
+
+            liker = self.user.name
+
+            if liker in post.likers:
+                post.likes = post.likes - 1
+                post.likers.remove(liker)
+                post.put()
+                self.redirect('/')
+
+# Create new commment to a post
+class NewComment(SiteHandler):    
+    def post(self, post_id):
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
+        
+        post_id_str = str(post.key.id())
+        
+        c = Comment(parent=post.key)
+        c.post_parent_id = post_id_str
+        c.author = User._by_name(self.user.name).name
+        c.content = self.request.get('comment_content')
+        c.put()
+
+        self.redirect('/' + post_id_str + '#comments')
+
+# Display comment to post as single page        
+class CommentPage(SiteHandler):
+    def get(self, post_id, comment_id):
+        p_key = ndb.Key('Post', int(post_id), parent=blog_key())
+                
+        c_key = ndb.Key(Comment, int(comment_id), parent=p_key)
+        c = c_key.get()
+        
+        if not c:
+            self.redirect('/')
+        
+        if self.user:
+            self.render_page("c_permalink.html", c=c, username=self.user.name)
+        else:
+            self.render_page("c_permalink.html", c=c)
+
+# Edit existing comment                 
 class EditComment(SiteHandler):
     def get(self, post_id, comment_id):
         p_key = ndb.Key('Post', int(post_id), parent=blog_key())
@@ -418,7 +449,7 @@ class EditComment(SiteHandler):
         
         self.redirect('/' + post_id_str + '#comments')
 
-
+# Delete existing comment
 class DeleteComment(SiteHandler):
     def get(self, post_id, comment_id):
         p_key = ndb.Key('Post', int(post_id), parent=blog_key())
@@ -436,65 +467,28 @@ class DeleteComment(SiteHandler):
         c_key = ndb.Key(Comment, int(comment_id), parent=p_key)
         c = c_key.get()
         
-        post_id_str = c.post_parent_id
-        
+        post_id_str = c.post_parent_id        
         c.key.delete()
         
         self.redirect('/' + post_id_str + '#comments')
 
 
-class LikePost(SiteHandler):
-    def post(self, post_id):
-        if not self.user:
-            self.redirect('/login')
-            
-        else:
-            key = ndb.Key('Post', int(post_id), parent=blog_key())
-            post = key.get()
-            
-            liker = self.user.name
-
-            post.likes = post.likes + 1
-            post.likers.append(liker)
-            post.put()
-            self.redirect('/')
-
-
-class UnlikePost(SiteHandler):
-    def post(self, post_id):
-        if not self.user:
-            self.redirect('/login')
-            
-        else:
-            key = ndb.Key('Post', int(post_id), parent=blog_key())
-            post = key.get()
-
-            liker = self.user.name
-
-            if liker in post.likers:
-                post.likes = post.likes - 1
-                post.likers.remove(liker)
-                post.put()
-                self.redirect('/')
-
-
-# [START app]
-app = webapp2.WSGIApplication([('/', BlogFront),
-                               ('/blog', BlogFront),
-                               ('/([0-9]+)', PostPage),
-                               ('/newpost', NewPost),
-                               ('/([0-9]+)/editpost', EditPost),
-                               ('/([0-9]+)/like', LikePost),
-                               ('/([0-9]+)/unlike', UnlikePost),
-                               ('/([0-9]+)/deletepost', DeletePost),
-                               ('/([0-9]+)/comment', NewComment),
-                               ('/([0-9]+)/comment/([0-9]+)', CommentPage),
-                               ('/([0-9]+)/comment/([0-9]+)/editcomment', EditComment),
-                               ('/([0-9]+)/comment/([0-9]+)/deletecomment', DeleteComment),
-                               ('/([0-9]+)/like', LikePost),
-                               ('/signup', Register),
-                               ('/login', Login),
-                               ('/welcome', Welcome),
-                               ('/logout', Logout)],
-                              debug=True)
-# [END app]
+"""WSGI app"""
+app = webapp2.WSGIApplication(
+    [('/', BlogFront),
+     ('/blog', BlogFront),
+     ('/signup', Register),
+     ('/login', Login),
+     ('/logout', Logout),
+     ('/welcome', Welcome),
+     ('/newpost', NewPost),
+     ('/([0-9]+)', PostPage),
+     ('/([0-9]+)/editpost', EditPost),
+     ('/([0-9]+)/deletepost', DeletePost),
+     ('/([0-9]+)/like', LikePost),
+     ('/([0-9]+)/unlike', UnlikePost),
+     ('/([0-9]+)/comment', NewComment),
+     ('/([0-9]+)/comment/([0-9]+)', CommentPage),
+     ('/([0-9]+)/comment/([0-9]+)/editcomment', EditComment),
+     ('/([0-9]+)/comment/([0-9]+)/deletecomment', DeleteComment)
+     ], debug=True)
