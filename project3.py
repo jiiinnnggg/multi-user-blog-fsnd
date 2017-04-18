@@ -265,6 +265,7 @@ class Welcome(SiteHandler):
         else:
             self.redirect('/login')
 
+
 # Create new post
 class NewPost(SiteHandler):
     def get(self):
@@ -275,8 +276,8 @@ class NewPost(SiteHandler):
 
     def post(self):
         if not self.user:
-            self.redirect('/')
-
+            return self.redirect('/login')
+        
         subject = self.request.get('subject')
         content = self.request.get('content')
 
@@ -327,7 +328,7 @@ class EditPost(SiteHandler):
 
     def post(self, post_id):
         if not self.user:
-            self.redirect('/')
+            return self.redirect('/login')
             
         key = ndb.Key('Post', int(post_id), parent=blog_key())
         p = key.get()
@@ -349,7 +350,7 @@ class DeletePost(SiteHandler):
 
     def post(self, post_id):
         if not self.user:
-            self.redirect('/')
+            return self.redirect('/login')
             
         key = ndb.Key('Post', int(post_id), parent=blog_key())
         p = key.get()
@@ -362,7 +363,7 @@ class DeletePost(SiteHandler):
 class LikePost(SiteHandler):
     def post(self, post_id):
         if not self.user:
-            self.redirect('/login')
+            return self.redirect('/login')
             
         else:
             key = ndb.Key('Post', int(post_id), parent=blog_key())
@@ -379,7 +380,7 @@ class LikePost(SiteHandler):
 class UnlikePost(SiteHandler):
     def post(self, post_id):
         if not self.user:
-            self.redirect('/login')
+            return self.redirect('/login')
             
         else:
             key = ndb.Key('Post', int(post_id), parent=blog_key())
@@ -394,8 +395,11 @@ class UnlikePost(SiteHandler):
                 self.redirect('/')
 
 # Create new commment to a post
-class NewComment(SiteHandler):    
+class NewComment(SiteHandler):              
     def post(self, post_id):
+        if not self.user:
+            return self.redirect('/login')
+        
         key = ndb.Key('Post', int(post_id), parent=blog_key())
         post = key.get()
         
@@ -437,7 +441,7 @@ class EditComment(SiteHandler):
 
     def post(self, post_id, comment_id):
         if not self.user:
-            self.redirect('/')
+            return self.redirect('/login')
             
         p_key = ndb.Key('Post', int(post_id), parent=blog_key())                
         c_key = ndb.Key(Comment, int(comment_id), parent=p_key)
@@ -461,7 +465,7 @@ class DeleteComment(SiteHandler):
     
     def post(self, post_id, comment_id): 
         if not self.user:
-            self.redirect('/')
+            return self.redirect('/login')
                    
         p_key = ndb.Key('Post', int(post_id), parent=blog_key())                
         c_key = ndb.Key(Comment, int(comment_id), parent=p_key)
