@@ -1,192 +1,13 @@
-import os
-import hmac
-import random
-from string import letters
-import hashlib
-import re
-from google.appengine.ext import ndb
-import jinja2
-import webapp2
-
-template_dir = os.path.join(os.path.dirname(__file__), 'Templates')
-
-JINJA_ENV = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(template_dir),
-    autoescape=True)
-
-"""Helper Functions"""
-
-
-class Utils:
-    def render_to_template(self, template, **params):
-        t = JINJA_ENV.get_template(template)
-        return t.render(params)
-
-    def make_secure_val(self, val):
-        secret = 'this_is_a_secret'
-        return '%s|%s' % (val, hmac.new(secret, val).hexdigest())
-
-    def check_secure_val(self, secure_val):
-        val = secure_val.split("|")[0]
-        if secure_val == self.make_secure_val(val):
-            return val
-
-    def make_salt(self, length=6):
-        return ''.join(random.choice(letters) for x in xrange(length))
-
-    def make_pw_hash(self, name, pw, salt=None):
-        if not salt:
-            salt = self.make_salt()
-        h = hashlib.sha256(name + pw + salt).hexdigest()
-        return '%s|%s' % (salt, h)
-
-    def valid_pw(self, name, pw, h):
-        salt = h.split('|')[0]
-        return h == self.make_pw_hash(name, pw, salt)
-
-    def valid_username(self, username):
-        USER_RE = re.compile(r"^[a-zA-Z0-9_-]{4,20}$")
-        if username:
-            return USER_RE.match(username)
-
-    def valid_password(self, password):
-        PASS_RE = re.compile(r"^.{4,20}$")
-        if password:
-            return PASS_RE.match(password)
-
-    def valid_email(self, email):
-        EMAIL_RE = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
-        if email:
-            return EMAIL_RE.match(email)
-
-
-"""RequestHandler functions"""
-
-
-class SiteHandler(webapp2.RequestHandler):
-    def write(self, *a, **kw):
-        self.response.out.write(*a, **kw)
-
-    def render_to_template(self, template, **params):
-        return Utils().render_to_template(template, **params)
-
-    def render_page(self, template, **kw):
-        self.write(self.render_to_template(template, **kw))
-
-    def set_secure_cookie(self, name, val):
-        cookie_val = Utils().make_secure_val(val)
-        self.response.headers.add_header(
-            'Set-Cookie',
-            '%s=%s; Path=/' % (name, cookie_val))
-
-    def read_secure_cookie(self, name):
-        cookie_val = self.request.cookies.get(name)
-        return cookie_val and Utils().check_secure_val(cookie_val)
-
-    def login(self, user):
-        self.set_secure_cookie('user_id', str(user.key.id()))
-
-    def logout(self):
-        self.response.headers.add_header('Set-Cookie', 'user_id=; Path=/')
-
-    def initialize(self, *a, **kw):
-        webapp2.RequestHandler.initialize(self, *a, **kw)
-        uid = self.read_secure_cookie('user_id')
-        self.user = uid and User._by_id(int(uid))
-
-"""Datastore classes (User, Post, Comment)"""
-# User class
-DEFAULT_USERGROUP_NAME = 'default_usergroup'
-
-
-def usergroup_key(usergroup_name=DEFAULT_USERGROUP_NAME):
-    return ndb.Key('UserGroup', usergroup_name)
-
-
-class User(ndb.Model):
-    name = ndb.StringProperty()
-    pw_hash = ndb.StringProperty()
-    email = ndb.StringProperty()
-
-    @classmethod
-    def _by_id(cls, uid):
-        u = cls.get_by_id(uid, parent=usergroup_key())
-        return u
-
-    @classmethod
-    def _by_name(cls, name):
-        u = cls.query(cls.name == name).get()
-        return u
-
-    @classmethod
-    def _register(cls, name, pw, email=None):
-        pw_hash = Utils().make_pw_hash(name, pw)
-        return cls(parent=usergroup_key(),
-                   name=name,
-                   pw_hash=pw_hash,
-                   email=email)
-
-    @classmethod
-    def _login(cls, name, pw):
-        u = cls._by_name(name)
-        if u and Utils().valid_pw(name, pw, u.pw_hash):
-            return u
-
-# Post class
-DEFAULT_BLOG_NAME = 'default_blog'
-
-
-def blog_key(blog_name=DEFAULT_BLOG_NAME):
-    return ndb.Key('Blog_name', blog_name)
-
-
-class Post(ndb.Model):
-    subject = ndb.StringProperty(required=True)
-    author = ndb.StringProperty()
-    content = ndb.TextProperty(required=True)
-
-    created = ndb.DateTimeProperty(auto_now_add=True)
-    last_modified = ndb.DateTimeProperty(auto_now=True)
-
-    likes = ndb.IntegerProperty(required=True)
-    likers = ndb.StringProperty(repeated=True)
-
-    def _render(self, username):
-        self._render_text = self.content.replace('\n', '<br>')
-        return Utils().render_to_template("post.html",
-                                          p=self,
-                                          username=username)
-
-    @classmethod
-    def _by_post_name(cls, name):
-        u = cls.query(cls.subject == name).get()
-        return u
-
-# Comment class
-
-
-class Comment(ndb.Model):
-    content = ndb.TextProperty(required=True)
-    author = ndb.StringProperty()
-    created = ndb.DateTimeProperty(auto_now_add=True)
-    last_modified = ndb.DateTimeProperty(auto_now=True)
-    post_parent_id = ndb.StringProperty()
-
-    def _render(self, username):
-        self._render_text = self.content.replace('\n', '<br>')
-        return Utils().render_to_template("comment.html",
-                                          c=self,
-                                          username=username)
-
+import p3helper as tools
 
 """SiteHandler sections"""
 # Front page
 
 
-class BlogFront(SiteHandler):
+class BlogFront(tools.SiteHandler):
     def get(self):
-        posts = Post.query()
-        posts = posts.order(-Post.created)
+        posts = tools.Post.query()
+        posts = posts.order(-tools.Post.created)
 
         if self.user:
             self.render_page("blog-front.html",
@@ -198,7 +19,7 @@ class BlogFront(SiteHandler):
 # Sign up and register new users
 
 
-class SignUp(SiteHandler):
+class SignUp(tools.SiteHandler):
     def get(self):
         self.render_page("signup-form.html")
 
@@ -213,11 +34,11 @@ class SignUp(SiteHandler):
         params = dict(username=self.username,
                       email=self.email)
 
-        if not Utils().valid_username(self.username):
+        if not tools.Utils().valid_username(self.username):
             params['error_username'] = "That's not a valid username."
             have_error = True
 
-        if not Utils().valid_password(self.password):
+        if not tools.Utils().valid_password(self.password):
             params['error_password'] = "That wasn't a valid password."
             have_error = True
 
@@ -225,7 +46,7 @@ class SignUp(SiteHandler):
             params['error_verify'] = "Your passwords didn't match."
             have_error = True
 
-        if not Utils().valid_email(self.email):
+        if not tools.Utils().valid_email(self.email):
             params['error_email'] = "That's not a valid email."
             have_error = True
 
@@ -240,13 +61,13 @@ class SignUp(SiteHandler):
 
 class Register(SignUp):
     def done(self):
-        u = User._by_name(self.username)
+        u = tools.User._by_name(self.username)
 
         if u:
             msg = 'That user already exists.'
             self.render_page('signup-form.html', error_username=msg)
         else:
-            u = User._register(self.username, self.password, self.email)
+            u = tools.User._register(self.username, self.password, self.email)
             u.put()
             self.login(u)
             self.redirect('/')
@@ -254,7 +75,7 @@ class Register(SignUp):
 # User log in and log out
 
 
-class Login(SiteHandler):
+class Login(tools.SiteHandler):
     def get(self):
         self.render_page('login-page.html')
 
@@ -262,7 +83,7 @@ class Login(SiteHandler):
         username = self.request.get('username')
         password = self.request.get('password')
 
-        u = User._login(username, password)
+        u = tools.User._login(username, password)
 
         if u:
             self.login(u)
@@ -272,13 +93,13 @@ class Login(SiteHandler):
             self.render_page('login-page.html', error=msg)
 
 
-class Logout(SiteHandler):
+class Logout(tools.SiteHandler):
     def get(self):
         self.logout()
         self.redirect('/')
 
 
-class Welcome(SiteHandler):
+class Welcome(tools.SiteHandler):
     def get(self):
         if self.user:
             self.render_page('welcome.html', username=self.user.name)
@@ -287,7 +108,7 @@ class Welcome(SiteHandler):
 
 
 # Create new post
-class NewPost(SiteHandler):
+class NewPost(tools.SiteHandler):
     def get(self):
         if self.user:
             self.render_page("new-post.html", username=self.user.name)
@@ -301,13 +122,13 @@ class NewPost(SiteHandler):
         subject = self.request.get('subject')
         content = self.request.get('content')
 
-        blog_name = self.request.get('blog_name', DEFAULT_BLOG_NAME)
+        blog_name = self.request.get('blog_name', tools.DEFAULT_BLOG_NAME)
 
         if subject and content:
-            new_post = Post(parent=blog_key(blog_name),
+            new_post = tools.Post(parent=blog_key(blog_name),
                             subject=subject,
                             content=content,
-                            author=User._by_name(self.user.name).name,
+                            author=tools.User._by_name(self.user.name).name,
                             likes=0,
                             likers=[]
                             )
@@ -324,13 +145,13 @@ class NewPost(SiteHandler):
 # Display single post
 
 
-class PostPage(SiteHandler):
+class PostPage(tools.SiteHandler):
     def get(self, post_id):
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         post = key.get()
 
-        comments_query = Comment.query(
-            ancestor=post.key).order(Comment.created)
+        comments_query = tools.Comment.query(
+            ancestor=post.key).order(tools.Comment.created)
         comments_for_post = comments_query.fetch()
 
         if not post:
@@ -350,9 +171,9 @@ class PostPage(SiteHandler):
 # Edit existing post
 
 
-class EditPost(SiteHandler):
+class EditPost(tools.SiteHandler):
     def get(self, post_id):
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         p = key.get()
 
         self.render_page("edit-post.html", p=p, username=self.user.name)
@@ -361,7 +182,7 @@ class EditPost(SiteHandler):
         if not self.user:
             return self.redirect('/login')
 
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         p = key.get()
 
         if p is not None:
@@ -375,9 +196,9 @@ class EditPost(SiteHandler):
 # Delete existing post
 
 
-class DeletePost(SiteHandler):
+class DeletePost(tools.SiteHandler):
     def get(self, post_id):
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         p = key.get()
 
         self.render_page("delete-post.html", p=p, username=self.user.name)
@@ -386,7 +207,7 @@ class DeletePost(SiteHandler):
         if not self.user:
             return self.redirect('/login')
 
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         p = key.get()
         p.key.delete()
         self.redirect('/')
@@ -394,12 +215,12 @@ class DeletePost(SiteHandler):
 # Like an existing post
 
 
-class LikePost(SiteHandler):
+class LikePost(tools.SiteHandler):
     def post(self, post_id):
         if not self.user:
             self.redirect('/login')
         else:
-            key = ndb.Key('Post', int(post_id), parent=blog_key())
+            key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
             post = key.get()
 
             # Can't like your own post
@@ -417,12 +238,12 @@ class LikePost(SiteHandler):
 # Undo a 'Like'
 
 
-class UnlikePost(SiteHandler):
+class UnlikePost(tools.SiteHandler):
     def post(self, post_id):
         if not self.user:
             self.redirect('/login')
         else:
-            key = ndb.Key('Post', int(post_id), parent=blog_key())
+            key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
             post = key.get()
 
             liker = self.user.name
@@ -434,7 +255,7 @@ class UnlikePost(SiteHandler):
                 self.redirect('/')
 
 
-class NoLike(SiteHandler):
+class NoLike(tools.SiteHandler):
     def get(self):
         if self.user:
             self.render_page("no-like.html",
@@ -445,19 +266,19 @@ class NoLike(SiteHandler):
 # Create new commment to a post
 
 
-class NewComment(SiteHandler):
+class NewComment(tools.SiteHandler):
     def post(self, post_id):
         if not self.user:
             return self.redirect('/login')
 
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         post = key.get()
 
         post_id_str = str(post.key.id())
 
-        c = Comment(parent=post.key)
+        c = tools.Comment(parent=post.key)
         c.post_parent_id = post_id_str
-        c.author = User._by_name(self.user.name).name
+        c.author = tools.User._by_name(self.user.name).name
         c.content = self.request.get('comment_content')
         c.put()
 
@@ -466,11 +287,10 @@ class NewComment(SiteHandler):
 # Display comment to post as single page
 
 
-class CommentPage(SiteHandler):
+class CommentPage(tools.SiteHandler):
     def get(self, post_id, comment_id):
-        p_key = ndb.Key('Post', int(post_id), parent=blog_key())
-
-        c_key = ndb.Key(Comment, int(comment_id), parent=p_key)
+        p_key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
+        c_key = tools.ndb.Key(tools.Comment, int(comment_id), parent=p_key)
         c = c_key.get()
 
         if not c:
@@ -484,11 +304,11 @@ class CommentPage(SiteHandler):
 # Edit existing comment
 
 
-class EditComment(SiteHandler):
+class EditComment(tools.SiteHandler):
     def get(self, post_id, comment_id):
-        p_key = ndb.Key('Post', int(post_id), parent=blog_key())
+        p_key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         p = p_key.get()
-        c_key = ndb.Key(Comment, int(comment_id), parent=p_key)
+        c_key = tools.ndb.Key(tools.Comment, int(comment_id), parent=p_key)
         c = c_key.get()
 
         self.render_page("edit-comment.html",
@@ -498,8 +318,8 @@ class EditComment(SiteHandler):
         if not self.user:
             return self.redirect('/login')
 
-        p_key = ndb.Key('Post', int(post_id), parent=blog_key())
-        c_key = ndb.Key(Comment, int(comment_id), parent=p_key)
+        p_key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
+        c_key = tools.ndb.Key(tools.Comment, int(comment_id), parent=p_key)
         c = c_key.get()
         post_id_str = c.post_parent_id
 
@@ -511,11 +331,11 @@ class EditComment(SiteHandler):
 # Delete existing comment
 
 
-class DeleteComment(SiteHandler):
+class DeleteComment(tools.SiteHandler):
     def get(self, post_id, comment_id):
-        p_key = ndb.Key('Post', int(post_id), parent=blog_key())
+        p_key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         p = p_key.get()
-        c_key = ndb.Key(Comment, int(comment_id), parent=p_key)
+        c_key = tools.ndb.Key(tools.Comment, int(comment_id), parent=p_key)
         c = c_key.get()
 
         self.render_page("delete-comment.html",
@@ -525,8 +345,8 @@ class DeleteComment(SiteHandler):
         if not self.user:
             return self.redirect('/login')
 
-        p_key = ndb.Key('Post', int(post_id), parent=blog_key())
-        c_key = ndb.Key(Comment, int(comment_id), parent=p_key)
+        p_key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
+        c_key = tools.ndb.Key(tools.Comment, int(comment_id), parent=p_key)
         c = c_key.get()
 
         post_id_str = c.post_parent_id
@@ -536,7 +356,7 @@ class DeleteComment(SiteHandler):
 
 
 """WSGI app"""
-app = webapp2.WSGIApplication(
+app = tools.webapp2.WSGIApplication(
     [('/', BlogFront),
      ('/blog', BlogFront),
      ('/signup', Register),
