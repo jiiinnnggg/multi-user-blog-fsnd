@@ -364,12 +364,13 @@ class EditPost(SiteHandler):
         key = ndb.Key('Post', int(post_id), parent=blog_key())
         p = key.get()
 
-        p.subject = self.request.get('subject')
-        p.content = self.request.get('content')
-
-        p.put()
-
-        self.redirect('/%s' % str(p.key.id()))
+        if p is not None:
+            p.subject = self.request.get('subject')
+            p.content = self.request.get('content')    
+            p.put()    
+            self.redirect('/%s' % str(p.key.id()))
+        else:
+            return self.redirect('/blog')
 
 # Delete existing post
 
@@ -473,7 +474,7 @@ class CommentPage(SiteHandler):
         c = c_key.get()
 
         if not c:
-            self.redirect('/')
+            return self.redirect('/')
 
         if self.user:
             self.render_page("c_permalink.html", c=c, username=self.user.name)
