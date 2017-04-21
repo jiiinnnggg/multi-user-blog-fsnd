@@ -108,6 +108,8 @@ class Welcome(tools.SiteHandler):
 
 
 """login decorator"""
+
+
 def login_required(some_function):
     def login(self, *args, **kwargs):
         if not self.user:
@@ -117,6 +119,8 @@ def login_required(some_function):
     return login
 
 # Create new post
+
+
 class NewPost(tools.SiteHandler):
     @login_required
     def get(self):
@@ -187,7 +191,7 @@ class EditPost(tools.SiteHandler):
     def get(self, post_id):
         key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         p = key.get()
-        
+
         if p is not None:
             self.render_page("edit-post.html", p=p, username=self.user.name)
         else:
@@ -216,7 +220,7 @@ class DeletePost(tools.SiteHandler):
     def get(self, post_id):
         key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         p = key.get()
-        
+
         if p is not None:
             self.render_page("delete-post.html", p=p, username=self.user.name)
         else:
@@ -228,7 +232,7 @@ class DeletePost(tools.SiteHandler):
 
         key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         p = key.get()
-        
+
         if p is not None:
             if self.user.key == p.author:
                 p.key.delete()
@@ -339,10 +343,10 @@ class EditComment(tools.SiteHandler):
         p = p_key.get()
         c_key = tools.ndb.Key(tools.Comment, int(comment_id), parent=p_key)
         c = c_key.get()
-        
+
         if c is not None:
             self.render_page("edit-comment.html",
-                         p=p, c=c, username=self.user.name)
+                             p=p, c=c, username=self.user.name)
         else:
             self.redirect('/%s' % str(p.key.id()))
 
@@ -353,7 +357,7 @@ class EditComment(tools.SiteHandler):
         p_key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         c_key = tools.ndb.Key(tools.Comment, int(comment_id), parent=p_key)
         c = c_key.get()
-        
+
         if c is not None:
             if self.user.key == c.author:
                 post_id_str = c.post_parent_id
@@ -361,7 +365,7 @@ class EditComment(tools.SiteHandler):
                 c.put()
                 self.redirect('/' + post_id_str + '#comments')
         else:
-            self.redirect('/' + post_id_str )
+            self.redirect('/' + post_id_str)
 
 # Delete existing comment
 
@@ -390,7 +394,7 @@ class DeleteComment(tools.SiteHandler):
                 c.key.delete()
                 self.redirect('/' + post_id_str + '#comments')
         else:
-            self.redirect('/' + post_id_str )
+            self.redirect('/' + post_id_str)
 
 
 """WSGI app"""
