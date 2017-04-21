@@ -107,13 +107,20 @@ class Welcome(tools.SiteHandler):
             self.redirect('/login')
 
 
+"""login decorator"""
+def login_required(some_function):
+    def login(self, *args, **kwargs):
+        if not self.user:
+            self.redirect('/login')
+        else:
+            some_function(self, *args, **kwargs)
+    return login
+
 # Create new post
 class NewPost(tools.SiteHandler):
+    @login_required
     def get(self):
-        if self.user:
             self.render_page("new-post.html", username=self.user.name)
-        else:
-            self.redirect('/login')
 
     def post(self):
         if not self.user:
