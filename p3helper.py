@@ -9,6 +9,12 @@ import webapp2
 from google.appengine.ext import ndb
 
 
+"""
+The helper functions, webapp RequestHandler,
+and datastore classes are contained in this module
+"""
+
+
 template_dir = os.path.join(os.path.dirname(__file__), 'Templates')
 
 JINJA_ENV = jinja2.Environment(

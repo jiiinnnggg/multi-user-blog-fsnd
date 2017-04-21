@@ -125,13 +125,14 @@ class NewPost(tools.SiteHandler):
         blog_name = self.request.get('blog_name', tools.DEFAULT_BLOG_NAME)
 
         if subject and content:
-            new_post = tools.Post(parent=blog_key(blog_name),
-                            subject=subject,
-                            content=content,
-                            author=tools.User._by_name(self.user.name).name,
-                            likes=0,
-                            likers=[]
-                            )
+            new_post = tools.Post(
+                        parent=tools.blog_key(blog_name),
+                        subject=subject,
+                        content=content,
+                        author=tools.User._by_name(self.user.name).name,
+                        likes=0,
+                        likers=[]
+                        )
             new_post.put()
             self.redirect('/%s' % str(new_post.key.id()))
 
@@ -187,8 +188,8 @@ class EditPost(tools.SiteHandler):
 
         if p is not None:
             p.subject = self.request.get('subject')
-            p.content = self.request.get('content')    
-            p.put()    
+            p.content = self.request.get('content')
+            p.put()
             self.redirect('/%s' % str(p.key.id()))
         else:
             return self.redirect('/blog')
