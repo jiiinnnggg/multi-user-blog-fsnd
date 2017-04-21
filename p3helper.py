@@ -149,7 +149,8 @@ def blog_key(blog_name=DEFAULT_BLOG_NAME):
 
 class Post(ndb.Model):
     subject = ndb.StringProperty(required=True)
-    author = ndb.StringProperty()
+    author = ndb.KeyProperty(kind=User)
+    authname = ndb.StringProperty()
     content = ndb.TextProperty(required=True)
 
     created = ndb.DateTimeProperty(auto_now_add=True)
@@ -174,7 +175,8 @@ class Post(ndb.Model):
 
 class Comment(ndb.Model):
     content = ndb.TextProperty(required=True)
-    author = ndb.StringProperty()
+    author = ndb.KeyProperty(kind=User)
+    authname = ndb.StringProperty()
     created = ndb.DateTimeProperty(auto_now_add=True)
     last_modified = ndb.DateTimeProperty(auto_now=True)
     post_parent_id = ndb.StringProperty()

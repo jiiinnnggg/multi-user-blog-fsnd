@@ -1,6 +1,6 @@
 <div class="single_comment">
 	<div class="comment-header"> 
-		<p><span class="c-author"><strong>{{c.author}}</strong></span> wrote on {{c.last_modified.strftime("%B %d, %Y")}}
+		<p><span class="c-author"><strong>{{c.authname}}</strong></span> wrote on {{c.last_modified.strftime("%B %d, %Y")}}
 		(ID: <a href="/{{c.post_parent_id}}/comment/{{c.key.id()}}">{{c.key.id()}}</a>):
 		</p>
 	</div>
@@ -12,7 +12,7 @@
 		<br>
 	</div>
 	
-	{% if username == c.author %}
+	{% if username == c.authname %}
 		<div class="edit_or_delete row">
 			<div class="col-md-12">
    				<a href="/{{c.post_parent_id}}/comment/{{c.key.id()}}/editcomment">Edit Comment</a>

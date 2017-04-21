@@ -6,7 +6,7 @@
 		</a>
 	</h5>
 	
-	<div>by <span class="post-author">{{p.author}}</span></div>
+	<div>by <span class="post-author">{{p.authname}}</span></div>
 	<div class="post-date">
 		<p>{{p.created.strftime("%A - %B %d, %Y")}}</p>
 	</div>
@@ -18,7 +18,7 @@
 	<hr>
 	  
 	{% if username %}
-		{% if username == p.author %}
+		{% if username == p.authname %}
 		<p><em><small>You may not like your own post.</small></em></p>
 		{% else %}
 			<p><strong>

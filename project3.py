@@ -129,7 +129,8 @@ class NewPost(tools.SiteHandler):
                         parent=tools.blog_key(blog_name),
                         subject=subject,
                         content=content,
-                        author=tools.User._by_name(self.user.name).name,
+                        author=tools.User._by_name(self.user.name).key,
+                        authname=tools.User._by_name(self.user.name).name,
                         likes=0,
                         likers=[]
                         )
@@ -150,6 +151,7 @@ class PostPage(tools.SiteHandler):
     def get(self, post_id):
         key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         post = key.get()
+        post_auth = post.author.get()
 
         comments_query = tools.Comment.query(
             ancestor=post.key).order(tools.Comment.created)
@@ -162,11 +164,13 @@ class PostPage(tools.SiteHandler):
         if self.user:
             self.render_page("permalink.html",
                              post=post,
+                             auth=post_auth,
                              comments=comments_for_post,
                              username=self.user.name)
         else:
             self.render_page("permalink.html",
                              post=post,
+                             auth=post_auth,
                              comments=comments_for_post)
 
 # Edit existing post
@@ -279,7 +283,8 @@ class NewComment(tools.SiteHandler):
 
         c = tools.Comment(parent=post.key)
         c.post_parent_id = post_id_str
-        c.author = tools.User._by_name(self.user.name).name
+        c.author = tools.User._by_name(self.user.name).key
+        c.authname = tools.User._by_name(self.user.name).name
         c.content = self.request.get('comment_content')
         c.put()
 
@@ -293,14 +298,20 @@ class CommentPage(tools.SiteHandler):
         p_key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         c_key = tools.ndb.Key(tools.Comment, int(comment_id), parent=p_key)
         c = c_key.get()
+        cauth = c.author.get()
 
         if not c:
             return self.redirect('/')
 
         if self.user:
-            self.render_page("c_permalink.html", c=c, username=self.user.name)
+            self.render_page("c_permalink.html",
+                             c=c,
+                             auth=cauth,
+                             username=self.user.name)
         else:
-            self.render_page("c_permalink.html", c=c)
+            self.render_page("c_permalink.html",
+                             c=c,
+                             auth=cauth)
 
 # Edit existing comment
 
