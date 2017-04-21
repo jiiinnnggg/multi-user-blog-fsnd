@@ -187,8 +187,11 @@ class EditPost(tools.SiteHandler):
     def get(self, post_id):
         key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         p = key.get()
-
-        self.render_page("edit-post.html", p=p, username=self.user.name)
+        
+        if p is not None:
+            self.render_page("edit-post.html", p=p, username=self.user.name)
+        else:
+            return self.redirect('/blog')
 
     def post(self, post_id):
         if not self.user:
@@ -198,10 +201,11 @@ class EditPost(tools.SiteHandler):
         p = key.get()
 
         if p is not None:
-            p.subject = self.request.get('subject')
-            p.content = self.request.get('content')
-            p.put()
-            self.redirect('/%s' % str(p.key.id()))
+            if self.user.key == p.author:
+                p.subject = self.request.get('subject')
+                p.content = self.request.get('content')
+                p.put()
+                self.redirect('/%s' % str(p.key.id()))
         else:
             return self.redirect('/blog')
 
@@ -212,8 +216,11 @@ class DeletePost(tools.SiteHandler):
     def get(self, post_id):
         key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         p = key.get()
-
-        self.render_page("delete-post.html", p=p, username=self.user.name)
+        
+        if p is not None:
+            self.render_page("delete-post.html", p=p, username=self.user.name)
+        else:
+            return self.redirect('/blog')
 
     def post(self, post_id):
         if not self.user:
@@ -221,8 +228,13 @@ class DeletePost(tools.SiteHandler):
 
         key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         p = key.get()
-        p.key.delete()
-        self.redirect('/')
+        
+        if p is not None:
+            if self.user.key == p.author:
+                p.key.delete()
+                self.redirect('/')
+        else:
+            return self.redirect('/blog')
 
 # Like an existing post
 
@@ -313,12 +325,10 @@ class CommentPage(tools.SiteHandler):
         if self.user:
             self.render_page("c_permalink.html",
                              c=c,
-                             auth=cauth,
                              username=self.user.name)
         else:
             self.render_page("c_permalink.html",
-                             c=c,
-                             auth=cauth)
+                             c=c)
 
 # Edit existing comment
 
@@ -329,9 +339,12 @@ class EditComment(tools.SiteHandler):
         p = p_key.get()
         c_key = tools.ndb.Key(tools.Comment, int(comment_id), parent=p_key)
         c = c_key.get()
-
-        self.render_page("edit-comment.html",
+        
+        if c is not None:
+            self.render_page("edit-comment.html",
                          p=p, c=c, username=self.user.name)
+        else:
+            self.redirect('/%s' % str(p.key.id()))
 
     def post(self, post_id, comment_id):
         if not self.user:
@@ -340,12 +353,15 @@ class EditComment(tools.SiteHandler):
         p_key = tools.ndb.Key('Post', int(post_id), parent=tools.blog_key())
         c_key = tools.ndb.Key(tools.Comment, int(comment_id), parent=p_key)
         c = c_key.get()
-        post_id_str = c.post_parent_id
-
-        c.content = self.request.get('content')
-        c.put()
-
-        self.redirect('/' + post_id_str + '#comments')
+        
+        if c is not None:
+            if self.user.key == c.author:
+                post_id_str = c.post_parent_id
+                c.content = self.request.get('comment_content')
+                c.put()
+                self.redirect('/' + post_id_str + '#comments')
+        else:
+            self.redirect('/' + post_id_str )
 
 # Delete existing comment
 
@@ -368,10 +384,13 @@ class DeleteComment(tools.SiteHandler):
         c_key = tools.ndb.Key(tools.Comment, int(comment_id), parent=p_key)
         c = c_key.get()
 
-        post_id_str = c.post_parent_id
-        c.key.delete()
-
-        self.redirect('/' + post_id_str + '#comments')
+        if c is not None:
+            if self.user.key == c.author:
+                post_id_str = c.post_parent_id
+                c.key.delete()
+                self.redirect('/' + post_id_str + '#comments')
+        else:
+            self.redirect('/' + post_id_str )
 
 
 """WSGI app"""
